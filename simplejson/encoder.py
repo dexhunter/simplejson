@@ -516,12 +516,13 @@ def _make_iterencode(markers, _default, _encoder, _indent, _floatstr,
                 pass
         return None
 
+    skip_quoting = (
+        _int_as_string_bitcount is None
+        or
+        _int_as_string_bitcount < 1
+    )
+
     def _encode_int(value):
-        skip_quoting = (
-            _int_as_string_bitcount is None
-            or
-            _int_as_string_bitcount < 1
-        )
         if type(value) not in integer_types:
             # See #118, do not trust custom str/repr
             value = int(value)
@@ -586,7 +587,11 @@ def _make_iterencode(markers, _default, _encoder, _indent, _floatstr,
                 else:
                     buf = separator
                 try:
-                    if isinstance(value, string_types):
+                    # Exact ints are the most common item; skip the
+                    # isinstance chain and the _encode_int call for them.
+                    if skip_quoting and type(value) is int:
+                        yield buf + str(value)
+                    elif isinstance(value, string_types):
                         yield buf + _encoder(value)
                     elif _PY3 and isinstance(value, bytes) and _encoding is not None:
                         yield buf + _encoder(value)
